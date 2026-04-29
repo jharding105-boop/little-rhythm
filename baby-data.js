@@ -14,6 +14,7 @@ window.BABY_TRACKER_PAYLOAD = {
     { id: "sleep", title: "Start nap", detail: "Track sleep live", icon: "☾" },
     { id: "feed", title: "Log feed", detail: "Bottle or solids", icon: "◔" },
     { id: "diaper", title: "Log diaper", detail: "Wet or dirty", icon: "◌" },
+    { id: "medication", title: "Log meds", detail: "Medicine or vitamins", icon: "✚" },
     { id: "note", title: "Add note", detail: "Mood, meds, milestone", icon: "✦" },
   ],
   timeline: [

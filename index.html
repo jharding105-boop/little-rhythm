@@ -148,6 +148,20 @@
       </article>
     </template>
 
+    <section class="sheet-backdrop is-hidden" id="choice-sheet" aria-hidden="true">
+      <div class="choice-sheet">
+        <div class="choice-sheet-header">
+          <div>
+            <p class="eyebrow" id="sheet-kicker">Quick add</p>
+            <h2 id="sheet-title">Choose an option</h2>
+          </div>
+          <button type="button" class="sheet-close" id="sheet-close" aria-label="Close">Close</button>
+        </div>
+        <p class="choice-sheet-note" id="sheet-note">Tap one option to log it instantly.</p>
+        <div class="choice-list" id="choice-list"></div>
+      </div>
+    </section>
+
     <script src="./baby-data.js"></script>
     <script src="./app.js"></script>
   </body>

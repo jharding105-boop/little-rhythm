@@ -11,8 +11,41 @@ const payload = window.BABY_TRACKER_PAYLOAD || {
 };
 
 const STORAGE_KEY = "little-rhythm-demo-state";
-const FEED_VARIANTS = ["Bottle • 5 oz", "Bottle • 6 oz", "Solids • pear puree", "Solids • avocado mash"];
-const DIAPER_VARIANTS = ["Wet", "Wet + dirty", "Dirty"];
+const LOGGING_OPTIONS = {
+  feed: {
+    kicker: "Feed",
+    title: "What did Maeve have?",
+    note: "Choose one to log it right away.",
+    options: [
+      { label: "Bottle", detail: "5 oz formula", entryTitle: "Bottle", entryDetail: "5 oz formula", entryType: "feed" },
+      { label: "Bottle", detail: "6 oz formula", entryTitle: "Bottle", entryDetail: "6 oz formula", entryType: "feed" },
+      { label: "Breast", detail: "Both sides · 14 min", entryTitle: "Breastfeed", entryDetail: "Both sides · 14 min", entryType: "feed" },
+      { label: "Solids", detail: "Banana + yogurt", entryTitle: "Solid meal", entryDetail: "Banana + yogurt", entryType: "feed" },
+    ],
+  },
+  diaper: {
+    kicker: "Diaper",
+    title: "What kind of change was it?",
+    note: "Keep the log quick and specific.",
+    options: [
+      { label: "Wet", detail: "Wet diaper", entryTitle: "Diaper change", entryDetail: "Wet", entryType: "diaper" },
+      { label: "Dirty", detail: "Dirty diaper", entryTitle: "Diaper change", entryDetail: "Dirty", entryType: "diaper" },
+      { label: "Wet + Dirty", detail: "Both", entryTitle: "Diaper change", entryDetail: "Wet + dirty", entryType: "diaper" },
+      { label: "Dry check", detail: "Checked and dry", entryTitle: "Diaper check", entryDetail: "Dry", entryType: "diaper" },
+    ],
+  },
+  medication: {
+    kicker: "Medication",
+    title: "What did you give?",
+    note: "Useful for teething days and daily vitamins.",
+    options: [
+      { label: "Vitamin D", detail: "Daily drop", entryTitle: "Medication", entryDetail: "Vitamin D drop", entryType: "medication" },
+      { label: "Tylenol", detail: "2.5 mL", entryTitle: "Medication", entryDetail: "Tylenol · 2.5 mL", entryType: "medication" },
+      { label: "Ibuprofen", detail: "1.875 mL", entryTitle: "Medication", entryDetail: "Ibuprofen · 1.875 mL", entryType: "medication" },
+      { label: "Gas drops", detail: "0.3 mL", entryTitle: "Medication", entryDetail: "Gas drops · 0.3 mL", entryType: "medication" },
+    ],
+  },
+};
 const NOTE_VARIANTS = payload.noteSeeds.length
   ? payload.noteSeeds
   : ["A calm stretch after the last feed.", "Maybe ready to size up bedtime routine soon."];
@@ -36,6 +69,12 @@ const timelineList = document.getElementById("timeline-list");
 const insightsList = document.getElementById("insights-list");
 const routineList = document.getElementById("routine-list");
 const notesList = document.getElementById("notes-list");
+const choiceSheet = document.getElementById("choice-sheet");
+const sheetKicker = document.getElementById("sheet-kicker");
+const sheetTitle = document.getElementById("sheet-title");
+const sheetNote = document.getElementById("sheet-note");
+const choiceList = document.getElementById("choice-list");
+const sheetClose = document.getElementById("sheet-close");
 
 const actionTemplate = document.getElementById("action-template");
 const statTemplate = document.getElementById("stat-template");
@@ -46,6 +85,12 @@ const stackItemTemplate = document.getElementById("stack-item-template");
 appTitle.textContent = payload.appName;
 childName.textContent = payload.child.name;
 childAge.textContent = payload.child.ageLabel;
+sheetClose.addEventListener("click", closeChoiceSheet);
+choiceSheet.addEventListener("click", (event) => {
+  if (event.target === choiceSheet) {
+    closeChoiceSheet();
+  }
+});
 
 renderActions();
 renderCaregivers();
@@ -60,8 +105,6 @@ function loadState() {
     return {
       timeline: [...payload.timeline],
       noteCursor: 0,
-      feedCursor: 0,
-      diaperCursor: 0,
       activeSleepStart: payload.timeline.find((entry) => entry.type === "sleep" && entry.active)?.time || null,
     };
   }
@@ -71,16 +114,12 @@ function loadState() {
     return {
       timeline: Array.isArray(parsed.timeline) ? parsed.timeline : [...payload.timeline],
       noteCursor: Number.isInteger(parsed.noteCursor) ? parsed.noteCursor : 0,
-      feedCursor: Number.isInteger(parsed.feedCursor) ? parsed.feedCursor : 0,
-      diaperCursor: Number.isInteger(parsed.diaperCursor) ? parsed.diaperCursor : 0,
       activeSleepStart: parsed.activeSleepStart || null,
     };
   } catch (error) {
     return {
       timeline: [...payload.timeline],
       noteCursor: 0,
-      feedCursor: 0,
-      diaperCursor: 0,
       activeSleepStart: payload.timeline.find((entry) => entry.type === "sleep" && entry.active)?.time || null,
     };
   }
@@ -92,8 +131,6 @@ function saveState() {
     JSON.stringify({
       timeline: state.timeline,
       noteCursor: state.noteCursor,
-      feedCursor: state.feedCursor,
-      diaperCursor: state.diaperCursor,
       activeSleepStart: state.activeSleepStart,
     }),
   );
@@ -139,38 +176,24 @@ function handleQuickAction(actionId) {
     return;
   }
 
-  const time = new Date().toISOString();
-  const caregiver = getActiveCaregiver();
-
   if (actionId === "feed") {
-    const detail = FEED_VARIANTS[state.feedCursor % FEED_VARIANTS.length];
-    state.feedCursor += 1;
-    prependEntry({
-      id: createId("feed"),
-      type: "feed",
-      title: detail.startsWith("Bottle") ? "Bottle" : "Solid feed",
-      detail,
-      time,
-      caregiver,
-    });
+    openChoiceSheet("feed");
     return;
   }
 
   if (actionId === "diaper") {
-    const detail = DIAPER_VARIANTS[state.diaperCursor % DIAPER_VARIANTS.length];
-    state.diaperCursor += 1;
-    prependEntry({
-      id: createId("diaper"),
-      type: "diaper",
-      title: "Diaper change",
-      detail,
-      time,
-      caregiver,
-    });
+    openChoiceSheet("diaper");
+    return;
+  }
+
+  if (actionId === "medication") {
+    openChoiceSheet("medication");
     return;
   }
 
   if (actionId === "note") {
+    const time = new Date().toISOString();
+    const caregiver = getActiveCaregiver();
     const detail = NOTE_VARIANTS[state.noteCursor % NOTE_VARIANTS.length];
     state.noteCursor += 1;
     prependEntry({
@@ -255,6 +278,55 @@ function renderApp() {
   renderInsights(metrics, currentlySleeping);
   renderRoutine();
   renderNotes(sortedTimeline);
+}
+
+function openChoiceSheet(actionId) {
+  const config = LOGGING_OPTIONS[actionId];
+  if (!config) {
+    return;
+  }
+
+  sheetKicker.textContent = config.kicker;
+  sheetTitle.textContent = config.title;
+  sheetNote.textContent = config.note;
+  choiceList.innerHTML = "";
+
+  config.options.forEach((option) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "choice-item";
+    button.innerHTML = `
+      <strong>${option.label}</strong>
+      <span>${option.detail}</span>
+    `;
+    button.addEventListener("click", () => {
+      logChoice(option);
+      closeChoiceSheet();
+    });
+    choiceList.appendChild(button);
+  });
+
+  choiceSheet.classList.remove("is-hidden");
+  choiceSheet.setAttribute("aria-hidden", "false");
+}
+
+function closeChoiceSheet() {
+  choiceSheet.classList.add("is-hidden");
+  choiceSheet.setAttribute("aria-hidden", "true");
+}
+
+function logChoice(option) {
+  const time = new Date().toISOString();
+  const caregiver = getActiveCaregiver();
+
+  prependEntry({
+    id: createId(option.entryType),
+    type: option.entryType,
+    title: option.entryTitle,
+    detail: option.entryDetail,
+    time,
+    caregiver,
+  });
 }
 
 function renderStats(metrics) {
@@ -382,6 +454,7 @@ function buildMetrics(entries) {
   const sleepEntries = todayEntries.filter((entry) => entry.type === "sleep" && Number.isFinite(entry.durationMinutes));
   const feedEntries = todayEntries.filter((entry) => entry.type === "feed");
   const diaperEntries = todayEntries.filter((entry) => entry.type === "diaper");
+  const medicationEntries = todayEntries.filter((entry) => entry.type === "medication");
   const lastFeed = feedEntries[0];
   const lastDiaper = diaperEntries[0];
   const totalSleepMinutes = sleepEntries.reduce((sum, entry) => sum + entry.durationMinutes, 0);
@@ -393,6 +466,7 @@ function buildMetrics(entries) {
     napCount: sleepEntries.length + (state.activeSleepStart ? 1 : 0),
     feedCount: feedEntries.length,
     diaperCount: diaperEntries.length,
+    medicationCount: medicationEntries.length,
     lastFeedText: lastFeed ? `Last at ${formatDisplayTime(lastFeed.time)}` : "No feeds logged",
     lastDiaperText: lastDiaper ? `Last at ${formatDisplayTime(lastDiaper.time)}` : "No diapers logged",
     currentWakeWindow: wakeWindowMinutes === null ? "Not enough data" : formatDuration(wakeWindowMinutes),
@@ -452,7 +526,10 @@ function getActionCopy(action) {
 
   return {
     title: action.title,
-    detail: action.detail,
+    detail:
+      action.id === "medication" && buildMetrics([...state.timeline]).medicationCount
+        ? `${buildMetrics([...state.timeline]).medicationCount} logged today`
+        : action.detail,
   };
 }
 
