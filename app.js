@@ -27,16 +27,19 @@ const awakeState = document.getElementById("awake-state");
 const heroSummary = document.getElementById("hero-summary");
 const lastEvent = document.getElementById("last-event");
 const nextEvent = document.getElementById("next-event");
+const focusGrid = document.getElementById("focus-grid");
 const caregiverRow = document.getElementById("caregiver-row");
 const actionGrid = document.getElementById("action-grid");
 const statsGrid = document.getElementById("stats-grid");
 const timelineCaption = document.getElementById("timeline-caption");
 const timelineList = document.getElementById("timeline-list");
 const insightsList = document.getElementById("insights-list");
+const routineList = document.getElementById("routine-list");
 const notesList = document.getElementById("notes-list");
 
 const actionTemplate = document.getElementById("action-template");
 const statTemplate = document.getElementById("stat-template");
+const focusTemplate = document.getElementById("focus-template");
 const timelineTemplate = document.getElementById("timeline-template");
 const stackItemTemplate = document.getElementById("stack-item-template");
 
@@ -101,10 +104,11 @@ function renderActions() {
 
   payload.quickActions.forEach((action) => {
     const button = actionTemplate.content.firstElementChild.cloneNode(true);
+    const actionCopy = getActionCopy(action);
     button.dataset.action = action.id;
     button.querySelector(".action-icon").textContent = action.icon;
-    button.querySelector(".action-title").textContent = action.title;
-    button.querySelector(".action-detail").textContent = action.detail;
+    button.querySelector(".action-title").textContent = actionCopy.title;
+    button.querySelector(".action-detail").textContent = actionCopy.detail;
     button.addEventListener("click", () => handleQuickAction(action.id));
     actionGrid.appendChild(button);
   });
@@ -231,22 +235,25 @@ function renderApp() {
   const latest = sortedTimeline[0];
   const metrics = buildMetrics(sortedTimeline);
   const currentlySleeping = Boolean(state.activeSleepStart);
-  const nextRhythm = currentlySleeping ? "Wake gently when ready" : payload.upcoming[0] || "No upcoming routine";
+  const nextRhythm = currentlySleeping ? "Wake gently when ready" : metrics.nextSleepText;
 
   awakeState.textContent = currentlySleeping ? "Sleeping" : "Awake";
   awakeState.classList.toggle("is-sleeping", currentlySleeping);
   heroSummary.textContent = currentlySleeping
-    ? `Nap started ${formatRelativeTime(state.activeSleepStart)}.`
-    : `${metrics.totalSleep} total sleep so far with ${metrics.feedCount} feeds logged today.`;
-  lastEvent.textContent = latest ? `${latest.title} • ${formatDisplayTime(latest.time)}` : "No entries yet";
+    ? `Down for ${formatRelativeDuration(state.activeSleepStart)} and tracking live.`
+    : `${metrics.currentWakeWindow} awake so far. ${metrics.nextFeedText} next feels about right.`;
+  lastEvent.textContent = latest ? `${latest.title} at ${formatDisplayTime(latest.time)}` : "No entries yet";
   nextEvent.textContent = nextRhythm;
   timelineCaption.textContent = currentlySleeping
     ? "Shared live sleep session is running."
-    : `Last sync from ${getActiveCaregiver()}.`;
+    : `Most recent update from ${latest?.caregiver || getActiveCaregiver()}.`;
 
+  renderActions();
+  renderFocus(metrics);
   renderStats(metrics);
   renderTimeline(sortedTimeline);
   renderInsights(metrics, currentlySleeping);
+  renderRoutine();
   renderNotes(sortedTimeline);
 }
 
@@ -254,10 +261,10 @@ function renderStats(metrics) {
   statsGrid.innerHTML = "";
 
   const cards = [
-    { label: "Sleep today", value: metrics.totalSleep, detail: `${metrics.napCount} naps logged` },
-    { label: "Feeds", value: String(metrics.feedCount), detail: metrics.lastFeedText },
-    { label: "Diapers", value: String(metrics.diaperCount), detail: metrics.lastDiaperText },
-    { label: "Longest wake window", value: metrics.longestWakeWindow, detail: "Based on today's entries" },
+    { label: "Day sleep", value: metrics.totalSleep, detail: `${metrics.napCount} naps tracked today` },
+    { label: "Feeds today", value: String(metrics.feedCount), detail: metrics.lastFeedText },
+    { label: "Diapers today", value: String(metrics.diaperCount), detail: metrics.lastDiaperText },
+    { label: "Longest wake window", value: metrics.longestWakeWindow, detail: "Across completed naps today" },
   ];
 
   cards.forEach((card) => {
@@ -266,6 +273,36 @@ function renderStats(metrics) {
     node.querySelector(".stat-value").textContent = card.value;
     node.querySelector(".stat-detail").textContent = card.detail;
     statsGrid.appendChild(node);
+  });
+}
+
+function renderFocus(metrics) {
+  focusGrid.innerHTML = "";
+
+  const cards = [
+    {
+      label: "Wake window",
+      value: metrics.currentWakeWindow,
+      detail: state.activeSleepStart ? "Paused while nap is running" : "Since the last completed nap",
+    },
+    {
+      label: "Next feed",
+      value: metrics.nextFeedText,
+      detail: metrics.lastFeedText,
+    },
+    {
+      label: "Next nap",
+      value: metrics.nextSleepText,
+      detail: state.activeSleepStart ? "Sleep timer is already running" : "Based on today's rhythm",
+    },
+  ];
+
+  cards.forEach((card) => {
+    const node = focusTemplate.content.firstElementChild.cloneNode(true);
+    node.querySelector(".focus-label").textContent = card.label;
+    node.querySelector(".focus-value").textContent = card.value;
+    node.querySelector(".focus-detail").textContent = card.detail;
+    focusGrid.appendChild(node);
   });
 }
 
@@ -308,6 +345,17 @@ function renderInsights(metrics, currentlySleeping) {
   });
 }
 
+function renderRoutine() {
+  routineList.innerHTML = "";
+
+  payload.upcoming.forEach((detail, index) => {
+    const node = stackItemTemplate.content.firstElementChild.cloneNode(true);
+    node.querySelector(".stack-title").textContent = index === 0 ? "Coming up soon" : `Later today`;
+    node.querySelector(".stack-detail").textContent = detail;
+    routineList.appendChild(node);
+  });
+}
+
 function renderNotes(entries) {
   notesList.innerHTML = "";
 
@@ -337,6 +385,8 @@ function buildMetrics(entries) {
   const lastFeed = feedEntries[0];
   const lastDiaper = diaperEntries[0];
   const totalSleepMinutes = sleepEntries.reduce((sum, entry) => sum + entry.durationMinutes, 0);
+  const nextFeedMinutes = lastFeed ? minutesSince(lastFeed.time) : null;
+  const wakeWindowMinutes = computeCurrentWakeWindowMinutes(entries);
 
   return {
     totalSleep: totalSleepMinutes ? formatDuration(totalSleepMinutes) : "0m",
@@ -345,22 +395,24 @@ function buildMetrics(entries) {
     diaperCount: diaperEntries.length,
     lastFeedText: lastFeed ? `Last at ${formatDisplayTime(lastFeed.time)}` : "No feeds logged",
     lastDiaperText: lastDiaper ? `Last at ${formatDisplayTime(lastDiaper.time)}` : "No diapers logged",
-    currentWakeWindow: computeCurrentWakeWindow(entries),
+    currentWakeWindow: wakeWindowMinutes === null ? "Not enough data" : formatDuration(wakeWindowMinutes),
     longestWakeWindow: computeLongestWakeWindow(entries),
+    nextFeedText: buildNextFeedText(nextFeedMinutes),
+    nextSleepText: buildNextSleepText(wakeWindowMinutes),
   };
 }
 
-function computeCurrentWakeWindow(entries) {
+function computeCurrentWakeWindowMinutes(entries) {
   if (state.activeSleepStart) {
-    return "0m";
+    return 0;
   }
 
   const lastSleep = entries.find((entry) => entry.type === "sleep" && entry.endedAt);
   if (!lastSleep) {
-    return "Not enough data";
+    return null;
   }
 
-  return formatDuration(Math.max(1, Math.round((Date.now() - new Date(lastSleep.endedAt).getTime()) / 60000)));
+  return Math.max(1, Math.round((Date.now() - new Date(lastSleep.endedAt).getTime()) / 60000));
 }
 
 function computeLongestWakeWindow(entries) {
@@ -388,6 +440,20 @@ function updateClock() {
     minute: "2-digit",
     timeZone: payload.timezone || "America/New_York",
   }).format(new Date());
+}
+
+function getActionCopy(action) {
+  if (action.id === "sleep" && state.activeSleepStart) {
+    return {
+      title: "End nap",
+      detail: `Running ${formatRelativeDuration(state.activeSleepStart)}`,
+    };
+  }
+
+  return {
+    title: action.title,
+    detail: action.detail,
+  };
 }
 
 function isSameTrackerDay(entry) {
@@ -435,6 +501,46 @@ function formatDuration(totalMinutes) {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return minutes ? `${hours}h ${minutes}m` : `${hours}h`;
+}
+
+function minutesSince(value) {
+  return Math.max(1, Math.round((Date.now() - new Date(value).getTime()) / 60000));
+}
+
+function buildNextFeedText(minutes) {
+  if (minutes === null) {
+    return "Follow hunger cues";
+  }
+
+  if (minutes < 120) {
+    return "Not soon";
+  }
+
+  if (minutes < 180) {
+    return "Within the hour";
+  }
+
+  return "Due now";
+}
+
+function buildNextSleepText(wakeWindowMinutes) {
+  if (state.activeSleepStart) {
+    return "Nap in progress";
+  }
+
+  if (wakeWindowMinutes === null) {
+    return "Watch sleepy cues";
+  }
+
+  if (wakeWindowMinutes < 90) {
+    return "Probably later";
+  }
+
+  if (wakeWindowMinutes < 150) {
+    return "Within the hour";
+  }
+
+  return "Due soon";
 }
 
 function createId(prefix) {

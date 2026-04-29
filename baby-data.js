@@ -2,7 +2,7 @@ window.BABY_TRACKER_PAYLOAD = {
   appName: "Little Rhythm",
   timezone: "America/New_York",
   child: {
-    name: "Milo",
+    name: "Maeve",
     ageLabel: "8 months old",
   },
   caregivers: [
@@ -78,7 +78,7 @@ window.BABY_TRACKER_PAYLOAD = {
     },
   ],
   upcoming: [
-    "Offer solids around 3:45 PM if he wakes in a good mood.",
+    "Offer solids around 3:45 PM if she wakes in a good mood.",
     "Try a stroller walk before dinner if the wake window runs long.",
     "Bath and pajamas usually start around 6:50 PM.",
   ],
