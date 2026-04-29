@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Little Rhythm</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="phone-frame">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Family rhythm</p>
+            <h1 id="app-title">Little Rhythm</h1>
+          </div>
+          <div class="time-pill">
+            <span>Updated</span>
+            <strong id="current-time">--:--</strong>
+          </div>
+        </header>
+
+        <section class="hero-card">
+          <div class="hero-copy">
+            <p class="eyebrow">Today with</p>
+            <h2 id="child-name">Baby</h2>
+            <p id="child-age" class="hero-age">8 months old</p>
+          </div>
+          <div class="hero-status">
+            <p id="awake-state" class="status-badge">Awake</p>
+            <p id="hero-summary" class="hero-summary">Calm morning rhythm.</p>
+          </div>
+          <div class="hero-meta">
+            <article class="meta-chip">
+              <span class="chip-label">Last event</span>
+              <strong id="last-event">Loading</strong>
+            </article>
+            <article class="meta-chip">
+              <span class="chip-label">Next up</span>
+              <strong id="next-event">Loading</strong>
+            </article>
+          </div>
+        </section>
+
+        <section class="caregiver-row" id="caregiver-row" aria-label="Caregivers"></section>
+
+        <section class="quick-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Quick log</p>
+              <h2>One-tap updates</h2>
+            </div>
+            <p class="section-note">Fast enough for one hand while holding a baby.</p>
+          </div>
+          <div class="action-grid" id="action-grid"></div>
+        </section>
+
+        <section class="stats-grid" id="stats-grid"></section>
+
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Today</p>
+              <h2>Daily timeline</h2>
+            </div>
+            <p id="timeline-caption" class="section-note">Shared between caregivers.</p>
+          </div>
+          <div id="timeline-list" class="timeline-list"></div>
+        </section>
+
+        <section class="split-panels">
+          <article class="panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Patterns</p>
+                <h2>What stands out</h2>
+              </div>
+            </div>
+            <div id="insights-list" class="stack-list"></div>
+          </article>
+
+          <article class="panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Notes</p>
+                <h2>Caregiver log</h2>
+              </div>
+            </div>
+            <div id="notes-list" class="stack-list"></div>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <template id="action-template">
+      <button type="button" class="action-card">
+        <span class="action-icon" aria-hidden="true"></span>
+        <strong class="action-title"></strong>
+        <span class="action-detail"></span>
+      </button>
+    </template>
+
+    <template id="stat-template">
+      <article class="stat-card">
+        <p class="stat-label"></p>
+        <strong class="stat-value"></strong>
+        <p class="stat-detail"></p>
+      </article>
+    </template>
+
+    <template id="timeline-template">
+      <article class="timeline-item">
+        <div class="timeline-dot" aria-hidden="true"></div>
+        <div class="timeline-content">
+          <div>
+            <p class="timeline-time"></p>
+            <h3 class="timeline-title"></h3>
+          </div>
+          <span class="timeline-tag"></span>
+        </div>
+      </article>
+    </template>
+
+    <template id="stack-item-template">
+      <article class="stack-item">
+        <p class="stack-title"></p>
+        <p class="stack-detail"></p>
+      </article>
+    </template>
+
+    <script src="./schedule-data.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
